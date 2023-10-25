@@ -1,5 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 
 const {
   VITE_FIREBASE_APIKEY,
@@ -29,4 +30,16 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+export const login = async () =>
+  signInWithPopup(auth, provider)
+    .then((result) => {
+      const user = result.user;
+      return user;
+    })
+    .catch((error) => {
+      console.log(error);
+    });
