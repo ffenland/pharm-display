@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Button,
   Flex,
@@ -8,21 +9,30 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useForm } from "react-hook-form";
-import { useAuthContext } from "../../libs/useAuthContext";
-import { useMutation } from "@tanstack/react-query";
 import { videoUpload } from "../../firebase/firebase";
+import { IDisplayUploadForm } from "../../types/display";
+import { useAuthContext } from "../../libs/useAuthContext";
+import { useNavigate } from "react-router-dom";
 
 const DisplayUpload = () => {
+  const navigate = useNavigate();
   const {
     authState: { user },
   } = useAuthContext();
-  const mutation = useMutation(videoUpload, {});
-  const { register, handleSubmit, getValues, watch } = useForm<{
-    video: FileList;
-  }>();
+  const [isUploading, setIsUploading] = useState(false);
+  const { register, handleSubmit, watch } = useForm<IDisplayUploadForm>();
   const attached = watch("video");
-  const onValid = (data: { video: FileList }) => {
-    if (!user) return;
+  const onValid = async (data: IDisplayUploadForm) => {
+    if (!user || isUploading) return;
+    setIsUploading(true);
+    const result = await videoUpload({
+      userUid: user.uid,
+      file: data.video[0],
+    });
+    setIsUploading(false);
+    if (result) {
+      navigate("/display");
+    }
   };
   return (
     <VStack maxW="lg" as="form" mx="auto" onSubmit={handleSubmit(onValid)}>
@@ -47,7 +57,9 @@ const DisplayUpload = () => {
           <Text fontSize={"xs"}>{`${attached[0].name}... 첨부됨.`}</Text>
         ) : null}
       </FormControl>
-      <Button type="submit">업로드</Button>
+      <Button type="submit" isDisabled={isUploading}>
+        업로드
+      </Button>
     </VStack>
   );
 };

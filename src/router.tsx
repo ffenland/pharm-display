@@ -3,6 +3,7 @@ import NotFound from "./components/router/NotFound";
 import Root from "./components/Root";
 import ProtectedRoute from "./components/router/ProtectedRoute";
 import DisplayUpload from "./components/display/DisplayUpload";
+import Display from "./components/display/Display";
 
 const router = createBrowserRouter([
   {
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
       {
         path: "display",
         children: [
+          { index: true, element: <Display /> },
           {
             path: "upload", //
             element: (

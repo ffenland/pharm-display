@@ -5,9 +5,9 @@ import Footer from "./Footer";
 
 const Root = () => {
   return (
-    <VStack w="full" h="100vh">
+    <VStack maxW={"lg"} h="100vh" mx="auto">
       <Header />
-      <Box flex={1} w="full">
+      <Box flex={1} w="full" p={1}>
         <Outlet />
       </Box>
       <Footer />

@@ -1,7 +1,7 @@
 import { Button, HStack, Text, useDisclosure } from "@chakra-ui/react";
 import SignupModal from "./Auth/SignupModal";
 import LoginModal from "./Auth/LoginModal";
-import { useAuthContext } from "../context/AuthContext";
+import { useAuthContext } from "../libs/useAuthContext";
 
 const Header = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -11,7 +11,6 @@ const Header = () => {
     onClose: onLoginClose,
   } = useDisclosure();
   const { authState, logout } = useAuthContext();
-  console.log(authState.user);
   return (
     <>
       <HStack w="full" justifyContent={"space-between"}>

@@ -9,14 +9,23 @@ import {
   onAuthStateChanged,
   User,
 } from "firebase/auth";
-import { getDatabase, ref as databaseRef, get } from "firebase/database";
+import {
+  getDatabase,
+  ref as databaseRef,
+  get,
+  set as databaseSet,
+} from "firebase/database";
 import { getMessaging } from "firebase/messaging";
 import {
   getStorage,
   ref as storageRef,
   list as storageList,
+  listAll,
   getDownloadURL,
+  uploadBytes,
+  FullMetadata,
 } from "firebase/storage";
+import { IVideoItem } from "../types/display";
 
 export interface AdminUser extends User {
   isAdmin: boolean;
@@ -99,7 +108,57 @@ const addIsAdmin = async (user: User) => {
     });
 };
 
+const writeVideoData = (metadata: FullMetadata) => {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      const reference = databaseRef(database, `videos/${user.uid}`);
+      databaseSet(reference, {
+        fileName: metadata,
+      });
+    } else {
+      // User is signed out
+      // ...
+    }
+  });
+};
+
 // Storage
+
+export const getVideoList = async () => {
+  return new Promise<IVideoItem[]>((resolve, reject) => {
+    const itemList: IVideoItem[] = [];
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const listRef = storageRef(storage, `videos/${user.uid}`);
+        try {
+          const res = await listAll(listRef);
+          res.items.forEach((item) => {
+            const { fullPath, name } = item;
+            itemList.push({ fullPath, name });
+          });
+          resolve(itemList);
+        } catch (error) {
+          reject(error);
+        }
+      } else {
+        resolve(itemList); // 사용자가 인증되지 않은 경우 빈 배열 반환
+      }
+    });
+  });
+};
+
+export const getVideoView = async (fullPath: string) => {
+  return new Promise<string>((resolve, reject) => {
+    const starsRef = storageRef(storage, fullPath);
+    try {
+      const url = getDownloadURL(starsRef);
+      resolve(url);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 /**
  *
  * @param baseUrl 공통된 경로
@@ -131,8 +190,14 @@ export const videoUpload = async ({
   userUid: string;
   file: File;
 }) => {
-  const reference = await getReference(`video/${userUid}`, file.name);
-  return;
+  const reference = await getReference(`videos/${userUid}`, file.name);
 
-  // check file already exist
+  return uploadBytes(reference, file)
+    .then((snapshot) => {
+      const metadata = snapshot.metadata;
+      return true;
+    })
+    .catch(() => {
+      return false;
+    });
 };
