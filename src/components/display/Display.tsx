@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getVideoList, getVideoView } from "../../firebase/firebase";
 import { IVideoItem } from "../../types/display";
 import { Box, Text, VStack } from "@chakra-ui/react";
+import { Link } from "react-router-dom";
 
 const Display = () => {
   const [videoList, setVideoList] = useState<IVideoItem[]>();
@@ -26,14 +27,9 @@ const Display = () => {
       <VStack>
         {videoList?.map((video) => {
           return (
-            <Box
-              key={video.name}
-              onClick={() => {
-                onVideoClick(video.fullPath);
-              }}
-            >
+            <Link key={video.name}>
               <Text>{video.name}</Text>
-            </Box>
+            </Link>
           );
         })}
       </VStack>
