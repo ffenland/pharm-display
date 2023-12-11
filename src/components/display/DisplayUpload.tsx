@@ -21,7 +21,9 @@ const DisplayUpload = () => {
   } = useAuthContext();
   const [isUploading, setIsUploading] = useState(false);
   const { register, handleSubmit, watch } = useForm<IDisplayUploadForm>();
+
   const attached = watch("video");
+
   const onValid = async (data: IDisplayUploadForm) => {
     if (!user || isUploading) return;
     setIsUploading(true);

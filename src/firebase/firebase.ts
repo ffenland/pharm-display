@@ -14,6 +14,8 @@ import {
   ref as databaseRef,
   get,
   set as databaseSet,
+  onValue,
+  update,
 } from "firebase/database";
 import { getMessaging } from "firebase/messaging";
 import {
@@ -26,6 +28,7 @@ import {
   FullMetadata,
 } from "firebase/storage";
 import { IVideoItem } from "../types/display";
+import { SnapshotMetadata } from "firebase/firestore";
 
 export interface AdminUser extends User {
   isAdmin: boolean;
@@ -92,9 +95,6 @@ export const onUserStateChanged = (
     },
     onError
   );
-
-// RealtimeDB
-
 const addIsAdmin = async (user: User) => {
   return get(databaseRef(database, "admins")) //
     .then((snapshot) => {
@@ -108,42 +108,109 @@ const addIsAdmin = async (user: User) => {
     });
 };
 
-const writeVideoData = (metadata: FullMetadata) => {
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      const reference = databaseRef(database, `videos/${user.uid}`);
-      databaseSet(reference, {
-        fileName: metadata,
-      });
-    } else {
-      // User is signed out
-      // ...
-    }
+// Video
+export const videoUpload = async ({
+  userUid,
+  file,
+}: {
+  userUid: string;
+  file: File;
+}) => {
+  // storage에 파일을 올리고 같은 내용으로 db에도 올린다.
+  const reference = await getStorageReference(`videos/${userUid}`, file.name);
+  return uploadBytes(reference, file)
+    .then((snapshot) => {
+      // url = vidoes/userUid/filename.mp4
+      const filePath = snapshot.ref.fullPath;
+      // let's make db
+      writeDbVideoUpload({ userUid, filePath });
+
+      return true;
+    })
+    .catch(() => {
+      return false;
+    });
+};
+
+export const writeDbVideoUpload = async ({
+  userUid,
+  filePath,
+}: {
+  userUid: string;
+  filePath: string;
+}) => {
+  const splitPath = filePath.split("/"); // '/'를 기준으로 문자열을 분할하여 배열 생성
+  const fileName = splitPath[splitPath.length - 1].split(".")[0];
+  const path = `files/${userUid}/${fileName}`;
+  console.log("1path", path);
+  const dbRef = await getDatabaseReference(path);
+  databaseSet(dbRef, {
+    filePath,
+    state: "pause",
   });
 };
 
-// Storage
+const getDatabaseReference = async (path: string) => {
+  let tryPath = path;
+  let count = 0;
+  while (
+    await get(databaseRef(database, path)).then((snapshot) => snapshot.exists())
+  ) {
+    count++;
+    tryPath = tryPath + `_${count}`;
+  }
+  console.log(tryPath);
+  return databaseRef(database, tryPath);
+};
 
-export const getVideoList = async () => {
-  return new Promise<IVideoItem[]>((resolve, reject) => {
-    const itemList: IVideoItem[] = [];
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const listRef = storageRef(storage, `videos/${user.uid}`);
-        try {
-          const res = await listAll(listRef);
-          res.items.forEach((item) => {
-            const { fullPath, name } = item;
-            itemList.push({ fullPath, name });
-          });
-          resolve(itemList);
-        } catch (error) {
-          reject(error);
-        }
+export interface VideoDbData {
+  [key: string]: { filePath: string; state: string };
+}
+
+export const getVideoDb = async (
+  userUid: string,
+  callback: (data: VideoDbData) => void
+) => {
+  const videoRef = databaseRef(database, `files/${userUid}`);
+  onValue(videoRef, (snapshot) => {
+    const data = snapshot.val();
+    callback(data);
+  });
+};
+
+export const setVideoPlay = async ({
+  userUid,
+  key,
+}: {
+  userUid: string;
+  key: string;
+}) => {
+  const videoRef = databaseRef(database, `files/${userUid}`);
+  const snapshot = await get(videoRef);
+  if (snapshot.exists()) {
+    snapshot.forEach((childSnapshot) => {
+      const childKey = childSnapshot.key;
+      if (childKey === key) {
+        update(databaseRef(database, `files/${userUid}/${key}`), {
+          state: "play",
+        });
       } else {
-        resolve(itemList); // 사용자가 인증되지 않은 경우 빈 배열 반환
+        update(databaseRef(database, `files/${userUid}/${childKey}`), {
+          state: "pause",
+        });
       }
     });
+  }
+
+  // const keyVideoRef = databaseRef(database, `files/${userUid}/${key}`);
+  // update(videoRef, { state: "play" });
+};
+
+export const getCurrentVideo = (userUid: string) => {
+  const currentVideoRef = databaseRef(database, `currentVideo/${userUid}`);
+  onValue(currentVideoRef, (snapshot) => {
+    const data = snapshot.val();
+    console.log(data);
   });
 };
 
@@ -165,7 +232,7 @@ export const getVideoView = async (fullPath: string) => {
  * @param fileName 파일이름
  * @returns 중복되지 않은 StorageReference
  */
-const getReference = async (baseUrl: string, fileName: string) => {
+const getStorageReference = async (baseUrl: string, fileName: string) => {
   let count = 0;
   let uniqueFileName = fileName;
   let tryRef = storageRef(storage, baseUrl + "/" + uniqueFileName);
@@ -177,27 +244,21 @@ const getReference = async (baseUrl: string, fileName: string) => {
     count++;
     const fileExtension = fileName.split(".").pop();
     const nameWithoutExtension = fileName.replace(`.${fileExtension}`, "");
-    uniqueFileName = `${nameWithoutExtension}[${count}].${fileExtension}`;
+    uniqueFileName = `${nameWithoutExtension}_${count}.${fileExtension}`;
     tryRef = storageRef(storage, baseUrl + "/" + uniqueFileName);
   }
   return tryRef;
 };
 
-export const videoUpload = async ({
+export const setCurrentVideo = async ({
   userUid,
-  file,
+  filePath,
 }: {
   userUid: string;
-  file: File;
+  filePath: string;
 }) => {
-  const reference = await getReference(`videos/${userUid}`, file.name);
-
-  return uploadBytes(reference, file)
-    .then((snapshot) => {
-      const metadata = snapshot.metadata;
-      return true;
-    })
-    .catch(() => {
-      return false;
-    });
+  databaseSet(databaseRef(database, `currentVideo/${userUid}`), {
+    filePath,
+    state: "play",
+  });
 };

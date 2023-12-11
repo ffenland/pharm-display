@@ -1,55 +1,57 @@
 import { useEffect, useState } from "react";
-import { getVideoList, getVideoView } from "../../firebase/firebase";
-import { IVideoItem } from "../../types/display";
-import { Box, Text, VStack } from "@chakra-ui/react";
-import { Link } from "react-router-dom";
+import { VideoDbData, getVideoDb, setVideoPlay } from "../../firebase/firebase";
+
+import { Button, HStack, Text, VStack } from "@chakra-ui/react";
+
+import { useAuthContext } from "../../libs/useAuthContext";
 
 const Display = () => {
-  const [videoList, setVideoList] = useState<IVideoItem[]>();
-  const [videoCode, setVideoCode] = useState("");
-  const onVideoClick = async (fullPath: string) => {
-    const link = await getVideoView(fullPath);
-    // 비디오 링크 상태 업데이트
-    console.log(link);
-    setVideoCode(link);
+  const {
+    authState: { user },
+  } = useAuthContext();
+  const [videoList, setVideoList] =
+    useState<{ filePath: string; state: string; key: string }[]>();
+
+  const onVideoClick = async (key: string) => {
+    if (!user) return;
+    setVideoPlay({ userUid: user.uid, key: key });
   };
 
   useEffect(() => {
-    const getFBVideoList = async () => {
-      const list = await getVideoList();
-      setVideoList(list);
-    };
-    getFBVideoList();
-  }, []);
+    if (user) {
+      getVideoDb(user.uid, (data: VideoDbData) => {
+        const videoListSet: { filePath: string; state: string; key: string }[] =
+          [];
+        for (const key in data) {
+          videoListSet.push({ ...data[key], key });
+        }
+        setVideoList((prev) => [...[...videoListSet]]);
+      });
+    }
+  }, [user]);
+
   return (
     <VStack>
       <Text>Hi Here is your Videos</Text>
       <VStack>
-        {videoList?.map((video) => {
-          return (
-            <Link key={video.name}>
-              <Text>{video.name}</Text>
-            </Link>
-          );
-        })}
+        {videoList &&
+          videoList?.map((video) => {
+            const videoSplit = video.filePath.split("/");
+            const videoName = videoSplit[videoSplit.length - 1].split(".")[0];
+            return (
+              <HStack key={video.filePath}>
+                <Text>{videoName}</Text>
+                <Button
+                  onClick={() => {
+                    onVideoClick(video.key);
+                  }}
+                >
+                  {video.state}
+                </Button>
+              </HStack>
+            );
+          })}
       </VStack>
-      <video
-        src={videoCode}
-        controls
-        autoPlay
-        style={
-          videoCode.length > 1
-            ? {
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                zIndex: 9999,
-              }
-            : undefined
-        }
-      />
     </VStack>
   );
 };

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 import type { UserCredential } from "firebase/auth";
 import {
   logout,
@@ -19,6 +19,7 @@ interface AuthContextValue {
   };
   logout: () => Promise<void>;
 }
+// context가 login, logout 메소드를 갖고 있어야, 상태변화를 바로 알고 authState값을 변경한다. 정말?
 export const AuthStateContext = createContext<AuthContextValue | undefined>(
   undefined
 );
@@ -33,7 +34,7 @@ export const AuthContextProvider = ({
     user: null,
     isError: false,
   });
-  const onChange = (user: User | null) => {
+  const onChange = (user: AdminUser | null) => {
     if (user) {
       setAuthState({ isLoading: false, user, isError: false });
     } else {

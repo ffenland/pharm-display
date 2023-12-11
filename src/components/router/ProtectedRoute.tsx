@@ -18,6 +18,7 @@ const ProtectedRoute = ({
   }
   if (!user || (requiredAdmin && !user.isAdmin)) {
     // 꺼져!
+
     return <Navigate to="/" replace />;
   } else {
     return children;
