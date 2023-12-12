@@ -28,7 +28,7 @@ const DisplayUpload = () => {
     if (!user || isUploading) return;
     setIsUploading(true);
     const result = await videoUpload({
-      userUid: user.uid,
+      keyCode: user.keyCode,
       file: data.video[0],
     });
     setIsUploading(false);
@@ -36,6 +36,7 @@ const DisplayUpload = () => {
       navigate("/display");
     }
   };
+
   return (
     <VStack maxW="lg" as="form" mx="auto" onSubmit={handleSubmit(onValid)}>
       <FormControl>
@@ -55,11 +56,14 @@ const DisplayUpload = () => {
           </Flex>
           <Input type="file" {...register("video")} accept="video/*" hidden />
         </FormLabel>
-        {attached ? (
+        {attached && attached.length > 0 ? (
           <Text fontSize={"xs"}>{`${attached[0].name}... 첨부됨.`}</Text>
         ) : null}
       </FormControl>
-      <Button type="submit" isDisabled={isUploading}>
+      <Button
+        type="submit"
+        isDisabled={isUploading || !attached || attached.length < 1}
+      >
         업로드
       </Button>
     </VStack>

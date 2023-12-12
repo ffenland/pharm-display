@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuthContext } from "../../libs/useAuthContext";
 import { VideoDbData, getVideoDb, getVideoView } from "../../firebase/firebase";
-import { Box, Container } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 
 const DisplayShow = () => {
   const {
@@ -14,7 +14,7 @@ const DisplayShow = () => {
 
   useEffect(() => {
     if (user) {
-      getVideoDb(user.uid, (data: VideoDbData) => {
+      getVideoDb(user.keyCode, (data: VideoDbData) => {
         const videoListSet: { filePath: string; state: string; key: string }[] =
           [];
         for (const key in data) {

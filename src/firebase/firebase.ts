@@ -22,16 +22,13 @@ import {
   getStorage,
   ref as storageRef,
   list as storageList,
-  listAll,
   getDownloadURL,
   uploadBytes,
-  FullMetadata,
 } from "firebase/storage";
-import { IVideoItem } from "../types/display";
-import { SnapshotMetadata } from "firebase/firestore";
 
 export interface AdminUser extends User {
   isAdmin: boolean;
+  keyCode: string;
 }
 
 const {
@@ -73,14 +70,74 @@ export const emailLogin = async ({
 }) => {
   return signInWithEmailAndPassword(auth, email, password);
 };
-export const googleLogin = async () =>
-  signInWithPopup(auth, provider).catch((error) => {
+
+const generateRandomKeyCode = () => {
+  const min = 100000; // Minimum value (6-digit number)
+  const max = 999999; // Maximum value (6-digit number)
+  return String(Math.floor(Math.random() * (max - min + 1)) + min);
+};
+
+const createUniqueKeyCode = async () => {
+  let exist = true;
+  let keyCode = "";
+  while (exist) {
+    keyCode = generateRandomKeyCode();
+    exist = false;
+    const checkRef = databaseRef(database, "keyCode/");
+
+    const checkSnapshot = await get(checkRef);
+    checkSnapshot.forEach((snapshot) => {
+      if (snapshot.val() === keyCode) {
+        exist = true;
+      }
+    });
+  }
+  return keyCode;
+};
+
+export const googleLogin = async () => {
+  try {
+    const userCredential = await signInWithPopup(auth, provider);
+    const userKeycodeRef = databaseRef(
+      database,
+      `keyCode/${userCredential.user.uid}`
+    );
+    const userKeycodeSnapshot = await get(userKeycodeRef);
+    if (!userKeycodeSnapshot.exists()) {
+      // Generate a random 6-digit keycode
+      // check key already exists.
+      const randomKeyCode = await createUniqueKeyCode();
+
+      // Save the keycode in the database at /keyCode/{user.uid}
+      await databaseSet(userKeycodeRef, randomKeyCode);
+      console.log("Keycode saved successfully:", randomKeyCode);
+    } else {
+      console.log(
+        "Keycode already exists for this user:",
+        userKeycodeSnapshot.val()
+      );
+    }
+    return userCredential;
+  } catch (error) {
     console.log(error);
-    return null;
-  });
+  }
+};
 
 export const logout = async () => {
   return signOut(auth);
+};
+
+export const isValidKeyCode = async (keyCode: string) => {
+  let exist = false;
+  const checkRef = databaseRef(database, "keyCode/");
+  const checkSnapshot = await get(checkRef);
+  checkSnapshot.forEach((snapshot) => {
+    if (snapshot.val() === keyCode) {
+      exist = true;
+    }
+  });
+
+  return exist;
 };
 
 export const onUserStateChanged = (
@@ -90,40 +147,46 @@ export const onUserStateChanged = (
   onAuthStateChanged(
     auth,
     async (user: User | null) => {
-      const updatedUser = user && (await addIsAdmin(user));
-      callback(updatedUser);
+      const adminAddedUser = user && (await addIsAdminKeyCode(user));
+      callback(adminAddedUser);
     },
     onError
   );
-const addIsAdmin = async (user: User) => {
-  return get(databaseRef(database, "admins")) //
+const addIsAdminKeyCode = async (user: User) => {
+  let isAdmin = false;
+  let keyCode = "";
+  await get(databaseRef(database, "admins")) //
     .then((snapshot) => {
       if (snapshot.exists()) {
         const admins: string[] = snapshot.val();
-        const isAdmin = admins.includes(user.uid);
-        return { ...user, isAdmin };
-      } else {
-        return { ...user, isAdmin: false };
+        isAdmin = admins.includes(user.uid);
       }
     });
+  await get(databaseRef(database, `keyCode/${user.uid}`)) //
+    .then((snapshot) => {
+      if (snapshot.exists()) {
+        keyCode = snapshot.val();
+      }
+    });
+  return { ...user, isAdmin, keyCode };
 };
 
 // Video
 export const videoUpload = async ({
-  userUid,
+  keyCode,
   file,
 }: {
-  userUid: string;
+  keyCode: string;
   file: File;
 }) => {
   // storage에 파일을 올리고 같은 내용으로 db에도 올린다.
-  const reference = await getStorageReference(`videos/${userUid}`, file.name);
+  const reference = await getStorageReference(`videos/${keyCode}`, file.name);
   return uploadBytes(reference, file)
     .then((snapshot) => {
-      // url = vidoes/userUid/filename.mp4
+      // url = vidoes/keyCode/filename.mp4
       const filePath = snapshot.ref.fullPath;
       // let's make db
-      writeDbVideoUpload({ userUid, filePath });
+      writeDbVideoUpload({ keyCode, filePath });
 
       return true;
     })
@@ -133,16 +196,15 @@ export const videoUpload = async ({
 };
 
 export const writeDbVideoUpload = async ({
-  userUid,
+  keyCode,
   filePath,
 }: {
-  userUid: string;
+  keyCode: string;
   filePath: string;
 }) => {
   const splitPath = filePath.split("/"); // '/'를 기준으로 문자열을 분할하여 배열 생성
   const fileName = splitPath[splitPath.length - 1].split(".")[0];
-  const path = `files/${userUid}/${fileName}`;
-  console.log("1path", path);
+  const path = `files/${keyCode}/${fileName}`;
   const dbRef = await getDatabaseReference(path);
   databaseSet(dbRef, {
     filePath,
@@ -159,7 +221,6 @@ const getDatabaseReference = async (path: string) => {
     count++;
     tryPath = tryPath + `_${count}`;
   }
-  console.log(tryPath);
   return databaseRef(database, tryPath);
 };
 
@@ -168,10 +229,10 @@ export interface VideoDbData {
 }
 
 export const getVideoDb = async (
-  userUid: string,
+  keyCode: string,
   callback: (data: VideoDbData) => void
 ) => {
-  const videoRef = databaseRef(database, `files/${userUid}`);
+  const videoRef = databaseRef(database, `files/${keyCode}`);
   onValue(videoRef, (snapshot) => {
     const data = snapshot.val();
     callback(data);
@@ -179,23 +240,23 @@ export const getVideoDb = async (
 };
 
 export const setVideoPlay = async ({
-  userUid,
+  keyCode,
   key,
 }: {
-  userUid: string;
+  keyCode: string;
   key: string;
 }) => {
-  const videoRef = databaseRef(database, `files/${userUid}`);
+  const videoRef = databaseRef(database, `files/${keyCode}`);
   const snapshot = await get(videoRef);
   if (snapshot.exists()) {
     snapshot.forEach((childSnapshot) => {
       const childKey = childSnapshot.key;
       if (childKey === key) {
-        update(databaseRef(database, `files/${userUid}/${key}`), {
+        update(databaseRef(database, `files/${keyCode}/${key}`), {
           state: "play",
         });
       } else {
-        update(databaseRef(database, `files/${userUid}/${childKey}`), {
+        update(databaseRef(database, `files/${keyCode}/${childKey}`), {
           state: "pause",
         });
       }
@@ -221,7 +282,7 @@ export const getVideoView = async (fullPath: string) => {
       const url = getDownloadURL(starsRef);
       resolve(url);
     } catch (error) {
-      reject(error);
+      reject("");
     }
   });
 };
@@ -261,4 +322,76 @@ export const setCurrentVideo = async ({
     filePath,
     state: "play",
   });
+};
+
+export interface ImonitorData {
+  filePath: string;
+  state: string;
+}
+
+export const monitorSignup = async ({
+  keyCode,
+  monitorId,
+  callback,
+}: {
+  keyCode: string;
+  monitorId: string;
+  callback: (data: ImonitorData) => void;
+}) => {
+  const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
+  onValue(monitorRef, async (snapshot) => {
+    const data: ImonitorData | null = snapshot.val();
+    if (data === null) {
+      databaseSet(monitorRef, { filePath: "", state: "pause" });
+    } else {
+      const filePath = await getVideoView(data.filePath);
+
+      callback({ filePath: filePath, state: data.state });
+    }
+  });
+};
+
+export const getMonitorList = async ({
+  keyCode,
+  callBack,
+}: {
+  keyCode: string;
+  callBack: (
+    monitors: { key: string; filePath: string; state: string }[]
+  ) => void;
+}) => {
+  const monitorsRef = databaseRef(database, `monitors/${keyCode}`);
+  onValue(monitorsRef, (snapshot) => {
+    const monitors: { key: string; filePath: string; state: string }[] = [];
+    snapshot.forEach((child) => {
+      monitors.push({ key: child.key, ...child.val() });
+    });
+    callBack(monitors);
+  });
+};
+
+export const setVideoToMonitor = async ({
+  keyCode,
+  monitorId,
+  filePath,
+}: {
+  keyCode: string;
+  monitorId: string;
+  filePath: string;
+}) => {
+  const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
+  await databaseSet(monitorRef, { filePath, state: "play" });
+};
+
+export const setVideoState = async ({
+  keyCode,
+  monitorId,
+  state,
+}: {
+  keyCode: string;
+  monitorId: string;
+  state: string;
+}) => {
+  const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
+  await update(monitorRef, { state });
 };

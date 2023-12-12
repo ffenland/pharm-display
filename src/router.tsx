@@ -1,12 +1,13 @@
 import { createBrowserRouter } from "react-router-dom";
 import NotFound from "./components/router/NotFound";
 import Root from "./components/Root";
-import ProtectedRoute from "./components/router/ProtectedRoute";
 import DisplayUpload from "./components/display/DisplayUpload";
 import Display from "./components/display/Display";
-import DisplayShow from "./components/display/DisplayShow";
+import Home from "./components/home/Home";
+import Monitor from "./components/Monitor/monitor";
 
 const router = createBrowserRouter([
+  { path: "monitor", element: <Monitor /> },
   {
     path: "/",
     element: <Root />,
@@ -14,29 +15,17 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <div>main</div>,
+        element: <Home />,
       },
-      {
-        path: "admin",
-        element: (
-          <ProtectedRoute>
-            <div>This is only for admin</div>
-          </ProtectedRoute>
-        ),
-      },
+
       {
         path: "display",
         children: [
           { index: true, element: <Display /> },
           {
             path: "upload", //
-            element: (
-              <ProtectedRoute requiredAdmin={false}>
-                <DisplayUpload />
-              </ProtectedRoute>
-            ),
+            element: <DisplayUpload />,
           },
-          { path: "show", element: <DisplayShow /> },
         ],
       },
     ],

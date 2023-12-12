@@ -1,13 +1,26 @@
-import React from "react";
-import NavBar from "./NavBar";
-import { Outlet } from "react-router-dom";
+import { Box, Text, VStack } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const Home = () => {
+  // const [searchParams, setSearchParams] = useSearchParams();
+  // const keyCode = searchParams.get("keyCode");
+
+  const [keyCode, setKeyCode] = useState("");
+
+  useEffect(() => {
+    const savedKeyCode = localStorage.getItem("keyCode");
+    if (savedKeyCode) {
+      setKeyCode(savedKeyCode);
+    }
+  }, []);
+
   return (
-    <>
-      <NavBar />
-      <Outlet />
-    </>
+    <VStack>
+      <Box>
+        <Text>{keyCode ? keyCode : "You need to set KeyCode"}</Text>
+      </Box>
+    </VStack>
   );
 };
 
