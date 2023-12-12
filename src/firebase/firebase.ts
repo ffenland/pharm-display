@@ -21,7 +21,6 @@ import { getMessaging } from "firebase/messaging";
 import {
   getStorage,
   ref as storageRef,
-  list as storageList,
   getDownloadURL,
   uploadBytes,
 } from "firebase/storage";

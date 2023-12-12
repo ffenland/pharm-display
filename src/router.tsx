@@ -4,7 +4,7 @@ import Root from "./components/Root";
 import DisplayUpload from "./components/display/DisplayUpload";
 import Display from "./components/display/Display";
 import Home from "./components/home/Home";
-import Monitor from "./components/Monitor/monitor";
+import Monitor from "./components/Monitor/Monitor";
 
 const router = createBrowserRouter([
   { path: "monitor", element: <Monitor /> },
@@ -17,7 +17,6 @@ const router = createBrowserRouter([
         index: true,
         element: <Home />,
       },
-
       {
         path: "display",
         children: [

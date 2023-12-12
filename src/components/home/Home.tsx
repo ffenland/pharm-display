@@ -1,6 +1,5 @@
 import { Box, Text, VStack } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 
 const Home = () => {
   // const [searchParams, setSearchParams] = useSearchParams();

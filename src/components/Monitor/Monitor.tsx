@@ -14,7 +14,7 @@ import {
   VStack,
   useDisclosure,
 } from "@chakra-ui/react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { isValidKeyCode, monitorSignup } from "../../firebase/firebase";
 import { useForm } from "react-hook-form";

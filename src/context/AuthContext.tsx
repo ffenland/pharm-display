@@ -15,7 +15,7 @@ interface AuthState {
 interface AuthContextValue {
   authState: AuthState;
   login: {
-    googleLogin: () => Promise<UserCredential | null>;
+    googleLogin: () => Promise<UserCredential | undefined>;
   };
   logout: () => Promise<void>;
 }
