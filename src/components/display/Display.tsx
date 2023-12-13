@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Grid,
   GridItem,
@@ -131,42 +132,68 @@ const Display = () => {
         <Text>입니다.</Text>
       </HStack>
       <Grid templateColumns={"repeat(2, 1fr)"} gap={5} w="full">
-        {monitorList
-          ? monitorList.map((monitor) => {
-              const slashString = monitor.filePath.split("/");
-              const fileName =
-                slashString[slashString.length - 1].split(".")[0];
-              return (
-                <GridItem
-                  key={monitor.key}
-                  border={"1px"}
-                  borderColor={"gray.100"}
-                  shadow={"lg"}
-                  rounded={"lg"}
-                  p={"5"}
-                  onClick={() => {
-                    onItemClick(monitor.key);
-                  }}
-                >
-                  <VStack>
-                    <HStack w="full">
-                      <Text>KeyID : </Text>
-                      <Text>{monitor.key}</Text>
-                    </HStack>
-                    <HStack w="full">
-                      <Text>파일명 : </Text>
-                      <Text>{fileName}</Text>
-                    </HStack>
-                    <HStack w="full">
-                      <Text>재생정보 : </Text>
-                      <Text>{monitor.state}</Text>
-                    </HStack>
-                  </VStack>
-                </GridItem>
-              );
-            })
-          : null}
+        {monitorList && monitorList.length > 0 ? (
+          monitorList.map((monitor) => {
+            const slashString = monitor.filePath.split("/");
+            const fileName = slashString[slashString.length - 1].split(".")[0];
+            return (
+              <GridItem
+                key={monitor.key}
+                border={"1px"}
+                borderColor={"gray.100"}
+                shadow={"lg"}
+                rounded={"lg"}
+                p={"5"}
+                onClick={() => {
+                  onItemClick(monitor.key);
+                }}
+              >
+                <VStack>
+                  <HStack w="full">
+                    <Text>KeyID : </Text>
+                    <Text>{monitor.key}</Text>
+                  </HStack>
+                  <HStack w="full">
+                    <Text>파일명 : </Text>
+                    <Text>{fileName}</Text>
+                  </HStack>
+                  <HStack w="full">
+                    <Text>재생정보 : </Text>
+                    <Text>{monitor.state}</Text>
+                  </HStack>
+                </VStack>
+              </GridItem>
+            );
+          })
+        ) : (
+          <Box>
+            <Text>현재 등록된 모니터가 없습니다. 모니터를 등록해주세요.</Text>
+          </Box>
+        )}
       </Grid>
+      <VStack
+        w="full"
+        alignItems={"start"}
+        mt={"5"}
+        bgColor={"gray.100"}
+        p="4"
+        rounded={"md"}
+      >
+        <Text>업로드된 동영상 목록.</Text>
+        {videoList && videoList.length > 1 ? (
+          videoList.map((video) => {
+            const fileSplit = video.filePath.split("/");
+            const fileName = fileSplit[fileSplit.length - 1].split(".")[0];
+            return (
+              <Box shadow={"md"} bgColor="white" p="3" rounded={"md"}>
+                {fileName}
+              </Box>
+            );
+          })
+        ) : (
+          <Text>한개도 없습니다.</Text>
+        )}
+      </VStack>
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
