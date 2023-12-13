@@ -343,7 +343,8 @@ export const monitorSignup = async ({
     if (data === null) {
       databaseSet(monitorRef, { filePath: "", state: "pause" });
     } else {
-      const filePath = await getVideoView(data.filePath);
+      //const filePath = await getVideoView(data.filePath);
+      const filePath = data.filePath;
 
       callback({ filePath: filePath, state: data.state });
     }

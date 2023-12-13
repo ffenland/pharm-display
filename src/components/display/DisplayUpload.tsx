@@ -13,6 +13,7 @@ import { videoUpload } from "../../firebase/firebase";
 import { IDisplayUploadForm } from "../../types/display";
 import { useAuthContext } from "../../libs/useAuthContext";
 import { useNavigate } from "react-router-dom";
+import { nasFileUpload } from "../../api/apit";
 
 const DisplayUpload = () => {
   const navigate = useNavigate();
@@ -25,16 +26,18 @@ const DisplayUpload = () => {
   const attached = watch("video");
 
   const onValid = async (data: IDisplayUploadForm) => {
-    if (!user || isUploading) return;
-    setIsUploading(true);
-    const result = await videoUpload({
-      keyCode: user.keyCode,
-      file: data.video[0],
-    });
-    setIsUploading(false);
-    if (result) {
-      navigate("/display");
-    }
+    nasFileUpload(data.video[0]);
+
+    // if (!user || isUploading) return;
+    // setIsUploading(true);
+    // const result = await videoUpload({
+    //   keyCode: user.keyCode,
+    //   file: data.video[0],
+    // });
+    // setIsUploading(false);
+    // if (result) {
+    //   navigate("/display");
+    // }
   };
 
   return (

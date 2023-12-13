@@ -53,8 +53,6 @@ const Monitor = () => {
     }
   };
 
-  console.log(currentVideo);
-
   useEffect(() => {
     // 맨 처음 로딩
     const keyCode = localStorage.getItem("keyCode");
