@@ -224,7 +224,7 @@ const getDatabaseReference = async (path: string) => {
 };
 
 export interface VideoDbData {
-  [key: string]: { filePath: string; state: string };
+  [key: string]: { filePath: string; state: string; fileName: string };
 }
 
 export const getVideoDb = async (
@@ -406,7 +406,7 @@ export const nasVideoLinkUpload = async ({
   fileName: string;
 }) => {
   const dbRef = databaseRef(database, `files/${keyCode}/${fileName}`);
-  return databaseSet(dbRef, { filePath: link, state: "pause" })
+  return databaseSet(dbRef, { filePath: link, state: "pause", fileName })
     .then(() => {
       return true;
     })

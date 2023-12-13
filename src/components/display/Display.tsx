@@ -27,23 +27,30 @@ import {
 } from "../../firebase/firebase";
 
 const Display = () => {
+  // 유저 정보 Context
   const {
     authState: { user },
   } = useAuthContext();
+  // modal 핸들러
   const { isOpen, onClose, onOpen } = useDisclosure();
+  // 등록된 모니터 목록
   const [monitorList, setMonitorList] = useState<
     { key: string; filePath: string; state: string }[]
   >([]);
+
+  // 업로드한 동영상 목록
   const [videoList, setVideoList] = useState<
-    { filePath: string; state: string; key: string }[]
+    { filePath: string; state: string; key: string; fileName: string }[]
   >([]);
 
+  // 선택한 모니터 정보. 모달에 띄워준다.
   const [chosen, setChosen] = useState<IVideoInfo>({
     key: "",
     filePath: "",
     state: "",
   });
 
+  // 모니터 목록에서 선택했을때 로직
   const onItemClick = (keyCode: string) => {
     const chosenItem = monitorList?.find((monitor) => monitor.key === keyCode);
     if (chosenItem) {
@@ -55,7 +62,7 @@ const Display = () => {
     }
     onOpen();
   };
-
+  // 모달창 내에서 영상을 클릭하면 해당 영상을 모니터에 재생시킨다.
   const onVideoChoice = ({
     monitorId,
     filePath,
@@ -67,7 +74,7 @@ const Display = () => {
       setVideoToMonitor({ keyCode: user.keyCode, filePath, monitorId });
     }
   };
-
+  // 영상은 바꾸지 않고 현재 재생중인 영상을 일시정지/재생 한다.
   const onStateToggle = ({
     monitorId,
     state,
@@ -84,8 +91,12 @@ const Display = () => {
   useEffect(() => {
     if (user) {
       getVideoDb(user.keyCode, (data: VideoDbData) => {
-        const videoListSet: { filePath: string; state: string; key: string }[] =
-          [];
+        const videoListSet: {
+          filePath: string;
+          state: string;
+          key: string;
+          fileName: string;
+        }[] = [];
         for (const key in data) {
           videoListSet.push({ ...data[key], key });
         }
@@ -117,6 +128,7 @@ const Display = () => {
       });
     }
   });
+  console.log(videoList);
 
   return (
     <VStack w="full">
@@ -180,13 +192,17 @@ const Display = () => {
         rounded={"md"}
       >
         <Text>업로드된 동영상 목록.</Text>
-        {videoList && videoList.length > 1 ? (
+        {videoList && videoList.length > 0 ? (
           videoList.map((video) => {
-            const fileSplit = video.filePath.split("/");
-            const fileName = fileSplit[fileSplit.length - 1].split(".")[0];
             return (
-              <Box shadow={"md"} bgColor="white" p="3" rounded={"md"}>
-                {fileName}
+              <Box
+                key={video.filePath}
+                shadow={"md"}
+                bgColor="white"
+                p="3"
+                rounded={"md"}
+              >
+                {video.fileName}
               </Box>
             );
           })
@@ -204,8 +220,8 @@ const Display = () => {
           <ModalBody>
             <VStack>
               <HStack>
-                <Text>filePath</Text>
-                <Text>{chosen.filePath}</Text>
+                <Text>모니터명</Text>
+                <Text>{chosen.key}</Text>
               </HStack>
               <HStack border={"1px"} p={2}>
                 <Text>상태</Text>
@@ -245,7 +261,7 @@ const Display = () => {
                     <VStack w="full">
                       <HStack>
                         <Text>filePath</Text>
-                        <Text>{video.filePath}</Text>
+                        <Text>{video.fileName}</Text>
                       </HStack>
                     </VStack>
                   </GridItem>

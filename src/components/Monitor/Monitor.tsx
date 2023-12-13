@@ -39,15 +39,13 @@ const Monitor = () => {
     monitorId: string;
   }) => {
     setIsLoading(true);
-    const isValid = await isValidKeyCode(data.keyCode);
     setIsLoading(false);
+    const isValid = await isValidKeyCode(data.keyCode);
     if (isValid) {
       localStorage.setItem("keyCode", data.keyCode);
       localStorage.setItem("monitorId", data.monitorId);
-      setCode({ keyCode: data.keyCode, monitorId: data.monitorId });
-      setIsKeyError(false);
-      setValue("keyCode", "");
       onClose();
+      window.location.reload();
     } else {
       setIsKeyError(true);
     }
