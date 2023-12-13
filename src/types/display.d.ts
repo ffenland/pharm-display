@@ -1,5 +1,6 @@
 export interface IDisplayUploadForm {
-  video: FileList;
+  link: string;
+  fileName: string;
 }
 
 export interface IVideoItem {

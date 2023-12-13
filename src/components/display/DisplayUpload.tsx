@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   Button,
-  Flex,
   FormControl,
   FormLabel,
   Input,
@@ -9,11 +8,10 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { useForm } from "react-hook-form";
-import { videoUpload } from "../../firebase/firebase";
+import { nasVideoLinkUpload } from "../../firebase/firebase";
 import { IDisplayUploadForm } from "../../types/display";
 import { useAuthContext } from "../../libs/useAuthContext";
 import { useNavigate } from "react-router-dom";
-import { nasFileUpload } from "../../api/apit";
 
 const DisplayUpload = () => {
   const navigate = useNavigate();
@@ -21,53 +19,53 @@ const DisplayUpload = () => {
     authState: { user },
   } = useAuthContext();
   const [isUploading, setIsUploading] = useState(false);
-  const { register, handleSubmit, watch } = useForm<IDisplayUploadForm>();
-
-  const attached = watch("video");
+  const [isError, setIsError] = useState(false);
+  const { register, handleSubmit } = useForm<IDisplayUploadForm>();
 
   const onValid = async (data: IDisplayUploadForm) => {
-    nasFileUpload(data.video[0]);
-
-    // if (!user || isUploading) return;
-    // setIsUploading(true);
-    // const result = await videoUpload({
-    //   keyCode: user.keyCode,
-    //   file: data.video[0],
-    // });
-    // setIsUploading(false);
-    // if (result) {
-    //   navigate("/display");
-    // }
+    if (!user || isUploading) return;
+    setIsError(false);
+    setIsUploading(true);
+    const keyCode = user.keyCode;
+    const result = await nasVideoLinkUpload({
+      link: data.link,
+      fileName: data.fileName,
+      keyCode,
+    });
+    setIsUploading(false);
+    if (result) {
+      navigate("/display");
+    } else {
+      setIsError(true);
+    }
   };
 
   return (
     <VStack maxW="lg" as="form" mx="auto" onSubmit={handleSubmit(onValid)}>
+      {isError ? <Text>뭔가 에러가 발생!</Text> : null}
       <FormControl>
         <FormLabel>
-          <Flex
-            h={10}
-            rounded={"xl"}
-            shadow={"lg"}
-            fontWeight={"bold"}
-            fontSize={"sm"}
-            justifyContent={"center"}
-            alignItems={"center"}
-            cursor={"pointer"}
-            _hover={{ bg: "gray.100" }}
-          >
-            동영상 첨부
-          </Flex>
-          <Input type="file" {...register("video")} accept="video/*" hidden />
+          <Text>링크주소</Text>
         </FormLabel>
-        {attached && attached.length > 0 ? (
-          <Text fontSize={"xs"}>{`${attached[0].name}... 첨부됨.`}</Text>
-        ) : null}
+        <Input
+          type="text"
+          {...register("link", { minLength: 2 })}
+          minLength={2}
+        />
       </FormControl>
-      <Button
-        type="submit"
-        isDisabled={isUploading || !attached || attached.length < 1}
-      >
-        업로드
+      <FormControl>
+        <FormLabel>
+          <Text>파일이름</Text>
+        </FormLabel>
+        <Input
+          type="text"
+          {...register("fileName", { minLength: 2 })}
+          placeholder="뭔지 기억하기 쉬운 짦은 이름"
+          minLength={2}
+        />
+      </FormControl>
+      <Button type="submit" isDisabled={isUploading}>
+        등록
       </Button>
     </VStack>
   );

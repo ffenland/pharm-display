@@ -395,3 +395,22 @@ export const setVideoState = async ({
   const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
   await update(monitorRef, { state });
 };
+
+export const nasVideoLinkUpload = async ({
+  link,
+  keyCode,
+  fileName,
+}: {
+  link: string;
+  keyCode: string;
+  fileName: string;
+}) => {
+  const dbRef = databaseRef(database, `files/${keyCode}/${fileName}`);
+  return databaseSet(dbRef, { filePath: link, state: "pause" })
+    .then(() => {
+      return true;
+    })
+    .catch(() => {
+      return false;
+    });
+};
