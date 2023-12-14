@@ -24,6 +24,7 @@ import {
   getDownloadURL,
   uploadBytes,
 } from "firebase/storage";
+import { videoTest } from "../libs/api";
 
 export interface AdminUser extends User {
   isAdmin: boolean;
@@ -178,20 +179,29 @@ export const videoUpload = async ({
   keyCode: string;
   file: File;
 }) => {
-  // storage에 파일을 올리고 같은 내용으로 db에도 올린다.
-  const reference = await getStorageReference(`videos/${keyCode}`, file.name);
-  return uploadBytes(reference, file)
-    .then((snapshot) => {
-      // url = vidoes/keyCode/filename.mp4
-      const filePath = snapshot.ref.fullPath;
-      // let's make db
-      writeDbVideoUpload({ keyCode, filePath });
-
-      return true;
-    })
-    .catch(() => {
+  if (auth.currentUser) {
+    try {
+      const idToken = await auth.currentUser.getIdToken(true);
+      console.log("FB", file);
+      const result = videoTest({ idToken, file });
+    } catch (error) {
       return false;
-    });
+    }
+  }
+  // storage에 파일을 올리고 같은 내용으로 db에도 올린다.
+  // const reference = await getStorageReference(`videos/${keyCode}`, file.name);
+  // return uploadBytes(reference, file)
+  //   .then((snapshot) => {
+  //     // url = vidoes/keyCode/filename.mp4
+  //     const filePath = snapshot.ref.fullPath;
+  //     // let's make db
+  //     writeDbVideoUpload({ keyCode, filePath });
+
+  //     return true;
+  //   })
+  //   .catch(() => {
+  //     return false;
+  //   });
 };
 
 export const writeDbVideoUpload = async ({

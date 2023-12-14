@@ -27,6 +27,8 @@ const DisplayUpload = () => {
   const onValid = async (data: IDisplayUploadForm) => {
     if (!user || isUploading) return;
     setIsUploading(true);
+    console.log(attached[0], "ATTACHED");
+    console.log(data.video[0], "VIDEO");
     const result = await videoUpload({
       keyCode: user.keyCode,
       file: data.video[0],
