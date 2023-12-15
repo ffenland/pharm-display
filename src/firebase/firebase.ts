@@ -61,6 +61,7 @@ export const messaging = getMessaging(app);
 export const storage = getStorage(app);
 
 const provider = new GoogleAuthProvider();
+
 export const emailLogin = async ({
   email,
   password,
