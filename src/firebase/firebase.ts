@@ -24,7 +24,7 @@ import {
   getDownloadURL,
   uploadBytes,
 } from "firebase/storage";
-import { videoTest } from "../libs/api";
+import { videoTest, videoUploadApi } from "../libs/api";
 
 export interface AdminUser extends User {
   isAdmin: boolean;
@@ -183,8 +183,8 @@ export const videoUpload = async ({
   if (auth.currentUser) {
     try {
       const idToken = await auth.currentUser.getIdToken(true);
-      console.log("FB", file);
-      const result = videoTest({ idToken, file });
+
+      videoUploadApi({ idToken, file, keyCode });
     } catch (error) {
       return false;
     }

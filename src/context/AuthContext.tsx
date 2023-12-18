@@ -20,9 +20,6 @@ interface AuthContextValue {
   logout: () => Promise<void>;
 }
 
-const useUser = () => {
-  const { isLoading, data } = useQuery([""]);
-};
 // context가 login, logout 메소드를 갖고 있어야, 상태변화를 바로 알고 authState값을 변경한다. 정말?
 export const AuthStateContext = createContext<AuthContextValue | undefined>(
   undefined
