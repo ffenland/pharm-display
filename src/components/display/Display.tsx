@@ -15,7 +15,7 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { IVideoInfo } from "../../types/display";
+import { IMonitor, IVideoInfo } from "../../types/types";
 import { useAuthContext } from "../../libs/useAuthContext";
 import { Link } from "react-router-dom";
 import {
@@ -30,30 +30,31 @@ const Display = () => {
   const {
     authState: { user },
   } = useAuthContext();
+
   const { isOpen, onClose, onOpen } = useDisclosure();
+
   const [monitorList, setMonitorList] = useState<
     { key: string; filePath: string; state: string }[]
   >([]);
+
   const [videoList, setVideoList] = useState<
-    { filePath: string; state: string; key: string }[]
+    { path: string; state: string; key: string }[]
   >([]);
 
-  const [chosen, setChosen] = useState<IVideoInfo>({
-    key: "",
-    filePath: "",
-    state: "",
+  const [chosen, setChosen] = useState<{ monitorId: string }>({
+    monitorId: "",
   });
 
-  const onItemClick = (keyCode: string) => {
-    const chosenItem = monitorList?.find((monitor) => monitor.key === keyCode);
+  const onItemClick = (monitorId: string) => {
+    const chosenItem = monitorList?.find(
+      (monitor) => monitor.key === monitorId
+    );
     if (chosenItem) {
       setChosen({
-        key: keyCode,
-        filePath: chosenItem.filePath,
-        state: chosenItem.state,
+        monitorId: monitorId,
       });
+      onOpen();
     }
-    onOpen();
   };
 
   const onVideoChoice = ({
@@ -82,20 +83,14 @@ const Display = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && user.keyCode) {
       getVideoDb(user.keyCode, (data: VideoDbData) => {
-        const videoListSet: { filePath: string; state: string; key: string }[] =
-          [];
+        const videoListSet: { path: string; state: string; key: string }[] = [];
         for (const key in data) {
           videoListSet.push({ ...data[key], key });
         }
         setVideoList([...videoListSet]);
       });
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
       getMonitorList({
         keyCode: user.keyCode,
         callBack: (monitors) => {
@@ -104,12 +99,12 @@ const Display = () => {
       });
     }
   }, [user]);
+
   useEffect(() => {
-    if (user && user?.keyCode) {
+    if (user) {
       const keyCode = user.keyCode;
       getVideoDb(keyCode, (data: VideoDbData) => {
-        const videoListSet: { filePath: string; state: string; key: string }[] =
-          [];
+        const videoListSet: { path: string; state: string; key: string }[] = [];
         for (const key in data) {
           videoListSet.push({ ...data[key], key });
         }
@@ -126,11 +121,7 @@ const Display = () => {
           업로드하러가기
         </Button>
       </HStack>
-      <HStack>
-        <Text>당신의 KeyCode는 </Text>
-        <Text fontWeight={"bold"}>{user?.keyCode}</Text>
-        <Text>입니다.</Text>
-      </HStack>
+
       <Grid templateColumns={"repeat(2, 1fr)"} gap={5} w="full">
         {monitorList && monitorList.length > 0 ? (
           monitorList.map((monitor) => {
@@ -150,7 +141,7 @@ const Display = () => {
               >
                 <VStack>
                   <HStack w="full">
-                    <Text>KeyID : </Text>
+                    <Text>모니터ID : </Text>
                     <Text>{monitor.key}</Text>
                   </HStack>
                   <HStack w="full">
@@ -180,12 +171,18 @@ const Display = () => {
         rounded={"md"}
       >
         <Text>업로드된 동영상 목록.</Text>
-        {videoList && videoList.length > 1 ? (
+        {videoList && videoList.length > 0 ? (
           videoList.map((video) => {
-            const fileSplit = video.filePath.split("/");
-            const fileName = fileSplit[fileSplit.length - 1].split(".")[0];
+            const fileSplit = video.path.split("/");
+            const fileName = fileSplit[fileSplit.length - 1];
             return (
-              <Box shadow={"md"} bgColor="white" p="3" rounded={"md"}>
+              <Box
+                key={video.key}
+                shadow={"md"}
+                bgColor="white"
+                p="3"
+                rounded={"md"}
+              >
                 {fileName}
               </Box>
             );
@@ -198,26 +195,44 @@ const Display = () => {
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
-            <Text>{chosen.key}의 정보</Text>
+            <Text>모니터 {chosen.monitorId}의 정보</Text>
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <VStack>
-              <HStack>
+              <HStack w="full" overflow={"hidden"}>
                 <Text>filePath</Text>
-                <Text>{chosen.filePath}</Text>
+                <Text>
+                  {
+                    monitorList.find(
+                      (monitor) => monitor.key === chosen.monitorId
+                    )?.filePath
+                  }
+                </Text>
               </HStack>
               <HStack border={"1px"} p={2}>
                 <Text>상태</Text>
                 <Button
                   onClick={() => {
                     onStateToggle({
-                      monitorId: chosen.key,
-                      state: chosen.state,
+                      monitorId: chosen.monitorId,
+                      state: monitorList.find(
+                        (monitor) => monitor.key === chosen.monitorId
+                      )
+                        ? monitorList.find(
+                            (monitor) => monitor.key === chosen.monitorId
+                          )!.state
+                        : "pause",
                     });
                   }}
                 >
-                  <Text>{chosen.state}</Text>
+                  <Text>
+                    {
+                      monitorList.find(
+                        (monitor) => monitor.key === chosen.monitorId
+                      )?.state
+                    }
+                  </Text>
                 </Button>
               </HStack>
             </VStack>
@@ -237,15 +252,15 @@ const Display = () => {
                     py="5"
                     onClick={() => {
                       onVideoChoice({
-                        monitorId: chosen.key,
-                        filePath: video.filePath,
+                        monitorId: chosen.monitorId,
+                        filePath: video.path,
                       });
                     }}
                   >
                     <VStack w="full">
                       <HStack>
                         <Text>filePath</Text>
-                        <Text>{video.filePath}</Text>
+                        <Text>{video.path}</Text>
                       </HStack>
                     </VStack>
                   </GridItem>

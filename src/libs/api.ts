@@ -2,6 +2,9 @@ import Cookie from "js-cookie";
 
 import axios from "axios";
 import { auth } from "../firebase/firebase";
+import { QueryFunctionContext } from "@tanstack/react-query";
+
+export const staticPath = "http://127.0.0.1:8000/static/";
 
 export const instance = axios.create({
   baseURL:
@@ -9,6 +12,18 @@ export const instance = axios.create({
       ? "http://127.0.0.1:8000/api/v1/"
       : "http://127.0.0.1:8000/api/v1/",
 });
+
+export const getMe = async () => {
+  const idToken = "h";
+  return instance
+    .get("users/me/", {
+      headers: {
+        "X-CSRFToken": Cookie.get("csrftoken") || "",
+        Authorization: `Bearer ${idToken}`,
+      },
+    })
+    .then((response) => response.data);
+};
 
 export const videoUploadApi = async ({
   idToken,

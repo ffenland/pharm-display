@@ -22,9 +22,10 @@ import {
   getStorage,
   ref as storageRef,
   getDownloadURL,
-  uploadBytes,
 } from "firebase/storage";
-import { videoTest, videoUploadApi } from "../libs/api";
+import { staticPath, videoUploadApi } from "../libs/api";
+import { IUserWithToken } from "../types/types";
+import { QueryFunctionContext } from "@tanstack/react-query";
 
 export interface AdminUser extends User {
   isAdmin: boolean;
@@ -79,16 +80,18 @@ const generateRandomKeyCode = () => {
 };
 
 const createUniqueKeyCode = async () => {
+  // 중복되지 않는 keyCode를 만들자.
+  // 랜덤을 만들고,
   let exist = true;
   let keyCode = "";
   while (exist) {
     keyCode = generateRandomKeyCode();
     exist = false;
     const checkRef = databaseRef(database, "keyCode/");
-
     const checkSnapshot = await get(checkRef);
     checkSnapshot.forEach((snapshot) => {
       if (snapshot.val() === keyCode) {
+        // 동일한 키코드가 있다면 exist를 true로.
         exist = true;
       }
     });
@@ -141,68 +144,54 @@ export const isValidKeyCode = async (keyCode: string) => {
   return exist;
 };
 
+export const getKeyCode = async (uid: string) =>
+  get(databaseRef(database, `keyCode/${uid}`)).then((snapshot) => {
+    if (snapshot.exists()) {
+      return snapshot.val() as string;
+    } else {
+      return undefined;
+    }
+  });
+
 export const onUserStateChanged = (
-  callback: (user: AdminUser | null) => void,
+  callback: (user: IUserWithToken | null) => void,
   onError: (error: Error) => void
 ) =>
   onAuthStateChanged(
     auth,
     async (user: User | null) => {
-      const adminAddedUser = user && (await addIsAdminKeyCode(user));
-      callback(adminAddedUser);
+      if (user) {
+        const idToken = await user.getIdToken();
+        const keyCode = await getKeyCode(user.uid);
+        callback({ ...user, idToken, keyCode: keyCode ? keyCode : null });
+      } else {
+        callback(null);
+      }
     },
     onError
   );
-const addIsAdminKeyCode = async (user: User) => {
-  let isAdmin = false;
-  let keyCode = "";
-  await get(databaseRef(database, "admins")) //
-    .then((snapshot) => {
-      if (snapshot.exists()) {
-        const admins: string[] = snapshot.val();
-        isAdmin = admins.includes(user.uid);
-      }
-    });
-  await get(databaseRef(database, `keyCode/${user.uid}`)) //
-    .then((snapshot) => {
-      if (snapshot.exists()) {
-        keyCode = snapshot.val();
-      }
-    });
-  return { ...user, isAdmin, keyCode };
-};
 
+export const getMonitors = async (context: QueryFunctionContext) => {
+  const [_, code] = context.queryKey;
+};
 // Video
+
 export const videoUpload = async ({
   keyCode,
+  idToken,
   file,
 }: {
   keyCode: string;
+  idToken: string;
   file: File;
 }) => {
-  if (auth.currentUser) {
-    try {
-      const idToken = await auth.currentUser.getIdToken(true);
-
-      videoUploadApi({ idToken, file, keyCode });
-    } catch (error) {
-      return false;
-    }
+  try {
+    // write to django
+    await videoUploadApi({ idToken, file, keyCode });
+    return true;
+  } catch (error) {
+    return false;
   }
-  // storage에 파일을 올리고 같은 내용으로 db에도 올린다.
-  // const reference = await getStorageReference(`videos/${keyCode}`, file.name);
-  // return uploadBytes(reference, file)
-  //   .then((snapshot) => {
-  //     // url = vidoes/keyCode/filename.mp4
-  //     const filePath = snapshot.ref.fullPath;
-  //     // let's make db
-  //     writeDbVideoUpload({ keyCode, filePath });
-
-  //     return true;
-  //   })
-  //   .catch(() => {
-  //     return false;
-  //   });
 };
 
 export const writeDbVideoUpload = async ({
@@ -235,7 +224,7 @@ const getDatabaseReference = async (path: string) => {
 };
 
 export interface VideoDbData {
-  [key: string]: { filePath: string; state: string };
+  [key: string]: { path: string; state: string };
 }
 
 export const getVideoDb = async (
@@ -245,6 +234,7 @@ export const getVideoDb = async (
   const videoRef = databaseRef(database, `files/${keyCode}`);
   onValue(videoRef, (snapshot) => {
     const data = snapshot.val();
+
     callback(data);
   });
 };
@@ -277,14 +267,6 @@ export const setVideoPlay = async ({
   // update(videoRef, { state: "play" });
 };
 
-export const getCurrentVideo = (userUid: string) => {
-  const currentVideoRef = databaseRef(database, `currentVideo/${userUid}`);
-  onValue(currentVideoRef, (snapshot) => {
-    const data = snapshot.val();
-    console.log(data);
-  });
-};
-
 export const getVideoView = async (fullPath: string) => {
   return new Promise<string>((resolve, reject) => {
     const starsRef = storageRef(storage, fullPath);
@@ -303,23 +285,6 @@ export const getVideoView = async (fullPath: string) => {
  * @param fileName 파일이름
  * @returns 중복되지 않은 StorageReference
  */
-const getStorageReference = async (baseUrl: string, fileName: string) => {
-  let count = 0;
-  let uniqueFileName = fileName;
-  let tryRef = storageRef(storage, baseUrl + "/" + uniqueFileName);
-  while (
-    await getDownloadURL(tryRef)
-      .then(() => true)
-      .catch(() => false)
-  ) {
-    count++;
-    const fileExtension = fileName.split(".").pop();
-    const nameWithoutExtension = fileName.replace(`.${fileExtension}`, "");
-    uniqueFileName = `${nameWithoutExtension}_${count}.${fileExtension}`;
-    tryRef = storageRef(storage, baseUrl + "/" + uniqueFileName);
-  }
-  return tryRef;
-};
 
 export const setCurrentVideo = async ({
   userUid,
@@ -354,7 +319,7 @@ export const monitorSignup = async ({
     if (data === null) {
       databaseSet(monitorRef, { filePath: "", state: "pause" });
     } else {
-      const filePath = await getVideoView(data.filePath);
+      const filePath = data.filePath;
 
       callback({ filePath: filePath, state: data.state });
     }

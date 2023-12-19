@@ -48,12 +48,11 @@ const Monitor = () => {
       setIsKeyError(false);
       setValue("keyCode", "");
       onClose();
+      window.location.reload();
     } else {
       setIsKeyError(true);
     }
   };
-
-  console.log(currentVideo);
 
   useEffect(() => {
     // 맨 처음 로딩

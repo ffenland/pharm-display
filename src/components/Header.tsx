@@ -20,7 +20,13 @@ const Header = () => {
         </Text>
         <HStack>
           {authState.user ? (
-            <Button onClick={logout}>Logout</Button>
+            <>
+              <HStack rounded={"md"} bgColor={"gray.100"} py={"2"} px={"3"}>
+                <Text>Key Code : </Text>
+                <Text>{authState.user.keyCode}</Text>
+              </HStack>
+              <Button onClick={logout}>Logout</Button>
+            </>
           ) : (
             <>
               <Button onClick={onLoginOpen}>Login</Button>

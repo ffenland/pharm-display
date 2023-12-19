@@ -9,11 +9,10 @@ const Home = () => {
   } = useAuthContext();
   const [keyCode, setKeyCode] = useState("");
   useEffect(() => {
-    const savedKeyCode = localStorage.getItem("keyCode");
-    if (savedKeyCode) {
-      setKeyCode(savedKeyCode);
+    if (user && user.keyCode) {
+      setKeyCode(user.keyCode);
     }
-  }, []);
+  }, [user]);
 
   return (
     <VStack bg={"pink.50"} py={"10"} rounded={"lg"}>

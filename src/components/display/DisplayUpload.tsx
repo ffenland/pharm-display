@@ -10,7 +10,7 @@ import {
 } from "@chakra-ui/react";
 import { useForm } from "react-hook-form";
 import { videoUpload } from "../../firebase/firebase";
-import { IDisplayUploadForm } from "../../types/display";
+import { IDisplayUploadForm } from "../../types/types";
 import { useAuthContext } from "../../libs/useAuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -27,10 +27,9 @@ const DisplayUpload = () => {
   const onValid = async (data: IDisplayUploadForm) => {
     if (!user || isUploading) return;
     setIsUploading(true);
-    console.log(attached[0], "ATTACHED");
-    console.log(data.video[0], "VIDEO");
     const result = await videoUpload({
       keyCode: user.keyCode,
+      idToken: user.idToken,
       file: data.video[0],
     });
     setIsUploading(false);
