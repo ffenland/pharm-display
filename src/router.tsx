@@ -5,6 +5,7 @@ import DisplayUpload from "./components/display/DisplayUpload";
 import Display from "./components/display/Display";
 import Home from "./components/home/Home";
 import Monitor from "./components/Monitor/Monitor";
+import DisplayMonitorSetting from "./components/display/DisplayMonitorSetting";
 
 const router = createBrowserRouter([
   { path: "monitor", element: <Monitor /> },
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
           {
             path: "upload", //
             element: <DisplayUpload />,
+          },
+          {
+            path: "monitor-setting", //
+            element: <DisplayMonitorSetting />,
           },
         ],
       },

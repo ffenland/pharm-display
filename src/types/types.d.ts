@@ -31,17 +31,12 @@ export interface IUserWithToken extends User {
   keyCode: string;
 }
 
-export interface IMonitorVideos {
-  monitorId: string;
-  fileList: {
-    path: string;
-    state: string;
-  };
-}
-
-export interface IMonitorList {
+export interface IMonitorsInfo {
   [keys: string]: {
     files: string[];
     state: string;
   };
+}
+export interface IVideosInfo {
+  [key: string]: { path: string; state: string };
 }

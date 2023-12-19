@@ -1,41 +1,69 @@
-import React from "react";
-import { IMonitorList } from "../../types/types";
-import { Grid, GridItem, HStack, Text, VStack } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
+import { IMonitorsInfo } from "../../types/types";
+import { Box, Grid, GridItem, HStack, Text } from "@chakra-ui/react";
+import { useAuthContext } from "../../libs/useAuthContext";
+import { listenMonitorInfo } from "../../firebase/firebase";
+import { Link } from "react-router-dom";
 
-const DisplayMonitors = ({ monitorList }: { monitorList: IMonitorList }) => {
-  const monitorIds = Object.keys(monitorList);
+const MonitorGrid = ({ monitors }: { monitors: IMonitorsInfo }) => {
+  const monitorKeys = Object.keys(monitors);
 
   return (
     <Grid templateColumns={"repeat(2, 1fr)"} gap={5} w="full">
-      {monitorIds.map((id) => {
-        const monitor = monitorList[id];
+      {monitorKeys.map((key) => {
         return (
           <GridItem
-            key={id}
-            border={"1px"}
-            borderColor={"gray.100"}
-            shadow={"lg"}
-            rounded={"lg"}
-            p={"5"}
+            w="full"
+            key={key}
+            shadow={"md"}
+            borderRadius={"md"}
+            p={"4"}
+            bgColor={"teal.50"}
+            cursor={"pointer"}
+            as={Link}
+            to={`/display/monitor-setting?id=${key}`}
           >
-            <VStack>
-              <HStack w="full">
-                <Text>모니터ID : </Text>
-                <Text>{id}</Text>
-              </HStack>
-              <HStack w="full">
-                <Text>파일명 : </Text>
-                <Text>{"fileName"}</Text>
-              </HStack>
-              <HStack w="full">
-                <Text>재생정보 : </Text>
-                <Text>{monitor.state}</Text>
-              </HStack>
-            </VStack>
+            <HStack w="full">
+              <Text>아이디 : </Text>
+              <Text>{key}</Text>
+            </HStack>
           </GridItem>
         );
       })}
     </Grid>
+  );
+};
+
+const DisplayMonitors = () => {
+  const {
+    authState: { user },
+  } = useAuthContext();
+
+  const [monitors, setMonitors] = useState<IMonitorsInfo>();
+  useEffect(() => {
+    if (user) {
+      //get monitor info
+      const keyCode = user.keyCode;
+      const callback = (monitors: IMonitorsInfo) => {
+        setMonitors(monitors);
+      };
+      listenMonitorInfo({ keyCode, callback });
+    }
+  }, [user]);
+
+  return (
+    <Box w="full" p={"4"} shadow={"md"} rounded={"md"}>
+      <Box mb={"3"}>
+        <Text fontSize={"lg"} fontWeight={"bold"}>
+          모니터 목록
+        </Text>
+      </Box>
+      {monitors ? (
+        <MonitorGrid monitors={monitors} />
+      ) : (
+        <Text>하나도 없네요.</Text>
+      )}
+    </Box>
   );
 };
 

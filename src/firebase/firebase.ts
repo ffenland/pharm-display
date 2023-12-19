@@ -24,7 +24,12 @@ import {
   getDownloadURL,
 } from "firebase/storage";
 import { staticPath, videoUploadApi } from "../libs/api";
-import { IUserWithToken } from "../types/types";
+import {
+  IMonitorsInfo,
+  IUserWithToken,
+  IVideoInfo,
+  IVideosInfo,
+} from "../types/types";
 import { QueryFunctionContext } from "@tanstack/react-query";
 import { getFileNameFromPath } from "../libs/utils";
 
@@ -219,22 +224,6 @@ const getDatabaseReference = async (path: string) => {
   return databaseRef(database, tryPath);
 };
 
-export interface VideoDbData {
-  [key: string]: { path: string; state: string };
-}
-
-export const getVideoDb = async (
-  keyCode: string,
-  callback: (data: VideoDbData) => void
-) => {
-  const videoRef = databaseRef(database, `files/${keyCode}`);
-  onValue(videoRef, (snapshot) => {
-    const data = snapshot.val();
-
-    callback(data);
-  });
-};
-
 export const setVideoPlay = async ({
   keyCode,
   key,
@@ -322,23 +311,37 @@ export const monitorSignup = async ({
   });
 };
 
-export const getMonitorList = async ({
+// 업로드된 Videos 목록 DB 리스너 등록
+export const listenVideosInfo = async ({
   keyCode,
-  callBack,
+  callback,
 }: {
   keyCode: string;
-  callBack: (monitors: {
-    [keys: string]: { files: string[]; state: string };
-  }) => void;
+  callback: (data: IVideosInfo) => void;
+}) => {
+  const videoRef = databaseRef(database, `files/${keyCode}`);
+  onValue(videoRef, (snapshot) => {
+    const data = snapshot.val();
+    callback(data);
+  });
+};
+
+// 모니터 DB 리스너 등록
+// DisplayMonitors
+export const listenMonitorInfo = async ({
+  keyCode,
+  callback,
+}: {
+  keyCode: string;
+  callback: (monitors: IMonitorsInfo) => void;
 }) => {
   const monitorsRef = databaseRef(database, `monitors/${keyCode}`);
   onValue(monitorsRef, (snapshot) => {
-    const monitors: { [keys: string]: { files: string[]; state: string } } = {};
+    const monitors: IMonitorsInfo = {};
     snapshot.forEach((child) => {
       monitors[child.key] = { ...child.val() };
     });
-
-    callBack(monitors);
+    callback(monitors);
   });
 };
 
