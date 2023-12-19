@@ -136,8 +136,8 @@ const Display = () => {
       </HStack>
 
       <Grid templateColumns={"repeat(2, 1fr)"} gap={5} w="full">
-        {monitorList && monitorList.length > 0 ? (
-          monitorList.map((monitor) => {
+        {monitorList  ? (
+          monitorList. .((monitor) => {
             // const slashString = monitor.filePath.split("/");
             // const fileName = slashString[slashString.length - 1].split(".")[0];
             return (
