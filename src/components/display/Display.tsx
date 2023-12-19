@@ -15,7 +15,7 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { IMonitor, IVideoInfo } from "../../types/types";
+import { IMonitor, IMonitorVideos, IVideoInfo } from "../../types/types";
 import { useAuthContext } from "../../libs/useAuthContext";
 import { Link } from "react-router-dom";
 import {
@@ -33,9 +33,9 @@ const Display = () => {
 
   const { isOpen, onClose, onOpen } = useDisclosure();
 
-  const [monitorList, setMonitorList] = useState<
-    { key: string; filePath: string; state: string }[]
-  >([]);
+  const [monitorList, setMonitorList] = useState<{
+    [keys: string]: { files: string[]; state: string };
+  }>();
 
   const [videoList, setVideoList] = useState<
     { path: string; state: string; key: string }[]
@@ -44,6 +44,19 @@ const Display = () => {
   const [chosen, setChosen] = useState<{ monitorId: string }>({
     monitorId: "",
   });
+
+  const [playList, setPlayList] = useState<IMonitorVideos[]>([]);
+
+  const toggleVideoToMonitorList = ({
+    monitorId,
+    filePath,
+  }: {
+    monitorId: string;
+    filePath: string;
+  }) => {
+    // video파일을 모니터의 재생목록에 넣거나 뺀다.
+    // 플레이리스트랑 비교해야하나... 아 ㅅㅂ
+  };
 
   const onItemClick = (monitorId: string) => {
     const chosenItem = monitorList?.find(
@@ -125,8 +138,8 @@ const Display = () => {
       <Grid templateColumns={"repeat(2, 1fr)"} gap={5} w="full">
         {monitorList && monitorList.length > 0 ? (
           monitorList.map((monitor) => {
-            const slashString = monitor.filePath.split("/");
-            const fileName = slashString[slashString.length - 1].split(".")[0];
+            // const slashString = monitor.filePath.split("/");
+            // const fileName = slashString[slashString.length - 1].split(".")[0];
             return (
               <GridItem
                 key={monitor.key}
@@ -146,7 +159,7 @@ const Display = () => {
                   </HStack>
                   <HStack w="full">
                     <Text>파일명 : </Text>
-                    <Text>{fileName}</Text>
+                    <Text>{"fileName"}</Text>
                   </HStack>
                   <HStack w="full">
                     <Text>재생정보 : </Text>
@@ -236,37 +249,43 @@ const Display = () => {
                 </Button>
               </HStack>
             </VStack>
-            <Grid
-              templateColumns={"repeat(1, 1fr)"}
-              gap={2}
-              mt={6}
-              cursor={"pointer"}
-            >
+
+            <VStack w="full" alignItems={"flex-start"}>
+              <Text>현재 보유하고 있는 Video 목록</Text>
               {videoList.map((video) => {
+                const nameSplit = video.path.split("/");
+                const fileName = nameSplit[nameSplit.length - 1];
                 return (
-                  <GridItem
+                  <HStack
                     key={video.key}
-                    border={"1px"}
-                    rounded={"lg"}
-                    _hover={{ bgColor: "gray.100" }}
-                    py="5"
-                    onClick={() => {
-                      onVideoChoice({
-                        monitorId: chosen.monitorId,
-                        filePath: video.path,
-                      });
-                    }}
+                    w="full"
+                    justifyContent={"space-between"}
                   >
-                    <VStack w="full">
-                      <HStack>
-                        <Text>filePath</Text>
-                        <Text>{video.path}</Text>
-                      </HStack>
-                    </VStack>
-                  </GridItem>
+                    <HStack>
+                      <Box border={"1px"} py={"0.5"} px={"2"}>
+                        <Text textOverflow={"ellipsis"}>{fileName}</Text>
+                      </Box>
+                      <Button
+                        onClick={() => {
+                          toggleVideoToMonitorList({
+                            monitorId: chosen.monitorId,
+                            filePath: video.path,
+                          });
+                        }}
+                        colorScheme={"green"}
+                        variant={"solid"}
+                        size="sm"
+                      >
+                        추가
+                      </Button>
+                    </HStack>
+                    <Button colorScheme="red" variant={"solid"} size="sm">
+                      Delete
+                    </Button>
+                  </HStack>
                 );
               })}
-            </Grid>
+            </VStack>
           </ModalBody>
         </ModalContent>
       </Modal>

@@ -26,6 +26,7 @@ import {
 import { staticPath, videoUploadApi } from "../libs/api";
 import { IUserWithToken } from "../types/types";
 import { QueryFunctionContext } from "@tanstack/react-query";
+import { getFileNameFromPath } from "../libs/utils";
 
 export interface AdminUser extends User {
   isAdmin: boolean;
@@ -170,11 +171,6 @@ export const onUserStateChanged = (
     },
     onError
   );
-
-export const getMonitors = async (context: QueryFunctionContext) => {
-  const [_, code] = context.queryKey;
-};
-// Video
 
 export const videoUpload = async ({
   keyCode,
@@ -331,18 +327,43 @@ export const getMonitorList = async ({
   callBack,
 }: {
   keyCode: string;
-  callBack: (
-    monitors: { key: string; filePath: string; state: string }[]
-  ) => void;
+  callBack: (monitors: {
+    [keys: string]: { files: string[]; state: string };
+  }) => void;
 }) => {
   const monitorsRef = databaseRef(database, `monitors/${keyCode}`);
   onValue(monitorsRef, (snapshot) => {
-    const monitors: { key: string; filePath: string; state: string }[] = [];
+    const monitors: { [keys: string]: { files: string[]; state: string } } = {};
     snapshot.forEach((child) => {
-      monitors.push({ key: child.key, ...child.val() });
+      monitors[child.key] = { ...child.val() };
     });
+
     callBack(monitors);
   });
+};
+
+export const addFileToMonitorFilelist = async ({
+  keyCode,
+  monitorId,
+  filePath,
+}: {
+  keyCode: string;
+  monitorId: string;
+  filePath: string;
+}) => {
+  const monitorsRef = databaseRef(
+    database,
+    `monitors/${keyCode}/${monitorId}/files`
+  );
+  onValue(
+    monitorsRef,
+    (snapshot) => {
+      const filesArray = snapshot.val() || [];
+      filesArray.push(filePath);
+      databaseSet(monitorsRef, filesArray);
+    },
+    { onlyOnce: true }
+  );
 };
 
 export const setVideoToMonitor = async ({
@@ -354,8 +375,18 @@ export const setVideoToMonitor = async ({
   monitorId: string;
   filePath: string;
 }) => {
-  const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
-  await databaseSet(monitorRef, { filePath, state: "play" });
+  const monitorRef = databaseRef(
+    database,
+    `monitors/${keyCode}/${monitorId}/files`
+  );
+  onValue(
+    monitorRef,
+    (snapshot) => {
+      const filesArray = snapshot.val() || [];
+      console.log(filesArray);
+    },
+    { onlyOnce: true }
+  );
 };
 
 export const setVideoState = async ({
