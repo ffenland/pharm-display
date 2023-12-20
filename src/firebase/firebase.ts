@@ -25,6 +25,7 @@ import {
 } from "firebase/storage";
 import { staticPath, videoUploadApi } from "../libs/api";
 import {
+  IMonitorOne,
   IMonitorsInfo,
   IUserWithToken,
   IVideoInfo,
@@ -320,7 +321,7 @@ export const listenVideosInfo = async ({
   callback: (data: IVideosInfo) => void;
 }) => {
   const videoRef = databaseRef(database, `files/${keyCode}`);
-  onValue(videoRef, (snapshot) => {
+  return onValue(videoRef, (snapshot) => {
     const data = snapshot.val();
     callback(data);
   });
@@ -328,7 +329,7 @@ export const listenVideosInfo = async ({
 
 // 모니터 DB 리스너 등록
 // DisplayMonitors
-export const listenMonitorInfo = async ({
+export const listenMonitorsInfo = async ({
   keyCode,
   callback,
 }: {
@@ -336,7 +337,7 @@ export const listenMonitorInfo = async ({
   callback: (monitors: IMonitorsInfo) => void;
 }) => {
   const monitorsRef = databaseRef(database, `monitors/${keyCode}`);
-  onValue(monitorsRef, (snapshot) => {
+  return onValue(monitorsRef, (snapshot) => {
     const monitors: IMonitorsInfo = {};
     snapshot.forEach((child) => {
       monitors[child.key] = { ...child.val() };
@@ -345,51 +346,60 @@ export const listenMonitorInfo = async ({
   });
 };
 
-export const addFileToMonitorFilelist = async ({
+export const addNewMonitor = async ({
   keyCode,
   monitorId,
-  filePath,
 }: {
   keyCode: string;
   monitorId: string;
-  filePath: string;
+}) => {
+  const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
+  await databaseSet(monitorRef, {
+    currentIndex: 0,
+    files: [],
+    state: "pause",
+  });
+};
+// 개별 모니터 DB 리스너 등록
+export const listenOneMonitor = async ({
+  keyCode,
+  monitorId,
+  callback,
+}: {
+  keyCode: string;
+  monitorId: string;
+  callback: (monitor: IMonitorOne | null) => void;
+}) => {
+  const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
+  return onValue(monitorRef, (snapshot) => {
+    const value = snapshot.val();
+    if (value === null) {
+      callback(null);
+    } else {
+      const monitor = {
+        currentIndex: value.currentIndex || 0,
+        files: value.files || [],
+        state: value.state || "pause",
+      };
+      callback(monitor);
+    }
+  });
+};
+
+export const editMonitorFiles = async ({
+  keyCode,
+  monitorId,
+  files,
+}: {
+  keyCode: string;
+  monitorId: string;
+  files: string[];
 }) => {
   const monitorsRef = databaseRef(
     database,
     `monitors/${keyCode}/${monitorId}/files`
   );
-  onValue(
-    monitorsRef,
-    (snapshot) => {
-      const filesArray = snapshot.val() || [];
-      filesArray.push(filePath);
-      databaseSet(monitorsRef, filesArray);
-    },
-    { onlyOnce: true }
-  );
-};
-
-export const setVideoToMonitor = async ({
-  keyCode,
-  monitorId,
-  filePath,
-}: {
-  keyCode: string;
-  monitorId: string;
-  filePath: string;
-}) => {
-  const monitorRef = databaseRef(
-    database,
-    `monitors/${keyCode}/${monitorId}/files`
-  );
-  onValue(
-    monitorRef,
-    (snapshot) => {
-      const filesArray = snapshot.val() || [];
-      console.log(filesArray);
-    },
-    { onlyOnce: true }
-  );
+  databaseSet(monitorsRef, files);
 };
 
 export const setVideoState = async ({

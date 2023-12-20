@@ -14,19 +14,23 @@ import {
   VStack,
   useDisclosure,
 } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { isValidKeyCode, monitorSignup } from "../../firebase/firebase";
+import {
+  addNewMonitor,
+  isValidKeyCode,
+  listenOneMonitor,
+} from "../../firebase/firebase";
 import { useForm } from "react-hook-form";
+import { IMonitorOne } from "../../types/types";
+import type { Unsubscribe } from "firebase/database";
 
 const Monitor = () => {
-  const { isOpen, onClose, onOpen } = useDisclosure();
   const [code, setCode] = useState({ keyCode: "", monitorId: "" });
+  const [monitor, setMonitor] = useState<IMonitorOne | null>();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const [currentVideo, setCurrentVideo] = useState<{
-    filePath: string;
-    state: string;
-  }>({ filePath: "", state: "pause" });
+  const { isOpen, onClose, onOpen } = useDisclosure();
   const [isKeyError, setIsKeyError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit, setValue } = useForm<{
@@ -55,6 +59,43 @@ const Monitor = () => {
   };
 
   useEffect(() => {
+    const handleVideoEnd = () => {
+      if (!monitor) return;
+      setMonitor((prev) => {
+        if (!prev) {
+          return prev;
+        } else {
+          if (prev.currentIndex + 1 < prev.files.length) {
+            return { ...prev, currentIndex: prev.currentIndex + 1 };
+          } else {
+            return { ...prev, currentIndex: 0 };
+          }
+        }
+      });
+    };
+    const videoElement = videoRef.current;
+    if (videoElement) {
+      videoElement.addEventListener("ended", handleVideoEnd);
+    }
+    return () => {
+      if (videoElement) {
+        videoElement.removeEventListener("ended", handleVideoEnd);
+      }
+    };
+  }, [monitor]);
+
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (videoElement && monitor && monitor.files && monitor.files.length > 0) {
+      // Video태그가로딩되고, 파일 목록에 파일이 있을 때만 재생기능 수행
+      videoElement.src = monitor.files[monitor.currentIndex];
+      videoElement.load();
+      videoElement.play();
+    }
+  }, [monitor, videoRef]);
+
+  useEffect(() => {
+    let unsubscribePromise: Promise<Unsubscribe>;
     // 맨 처음 로딩
     const keyCode = localStorage.getItem("keyCode");
     const monitorId = localStorage.getItem("monitorId");
@@ -68,17 +109,48 @@ const Monitor = () => {
       // 등록 modal 열기
       onOpen();
     } else {
-      monitorSignup({
+      setCode(() => ({ keyCode, monitorId }));
+      const callback = (monitor: IMonitorOne | null) => {
+        setMonitor(monitor);
+      };
+      unsubscribePromise = listenOneMonitor({
         keyCode,
         monitorId,
-        callback: (data) => {
-          setCurrentVideo({ ...data });
-        },
+        callback,
       });
-      setCode(() => ({ keyCode, monitorId }));
     }
-  }, [onOpen, setValue]);
 
+    return () => {
+      if (unsubscribePromise) {
+        unsubscribePromise
+          .then((unsubscribe) => {
+            // Call the unsubscribe function when the Promise resolves
+            unsubscribe();
+          })
+          .catch((error) => {
+            // Handle any errors if unsubscribePromise rejects
+            console.error("Error while unsubscribing:", error);
+          });
+      }
+    };
+  }, [onOpen, setValue]);
+  useEffect(() => {
+    if (monitor === null && code.keyCode !== "" && code.monitorId !== "") {
+      // 등록되지 않은 모니터의 경우,
+      // DB에 등록을 하고 페이지를 새로고침 한다.
+      const createMonitor = async ({
+        keyCode,
+        monitorId,
+      }: {
+        keyCode: string;
+        monitorId: string;
+      }) => {
+        await addNewMonitor({ keyCode, monitorId });
+        window.location.reload();
+      };
+      createMonitor({ keyCode: code.keyCode, monitorId: code.monitorId });
+    }
+  }, [monitor, code]);
   return (
     <>
       <Box
@@ -92,13 +164,7 @@ const Monitor = () => {
         alignItems="center"
         backgroundColor="black"
       >
-        <video
-          src={`${currentVideo.filePath}`}
-          autoPlay
-          muted
-          loop
-          style={{ width: "100%", height: "100%" }}
-        />
+        <video ref={videoRef} muted style={{ width: "100%", height: "100%" }} />
       </Box>
       <Modal
         isOpen={isOpen || code.monitorId.length < 1 || code.keyCode.length < 1}
@@ -143,3 +209,12 @@ const Monitor = () => {
 };
 
 export default Monitor;
+
+/*
+처음부터 영상의 목록을 받아올 것이 아니라,
+index 값을 전달하면 해당 index의 영상링크값을 받아 오게 해서,
+영상이 끝나면 다음 영상 주소를 요청해서 받아오는 형식으로 만들면
+현재 무슨 영상이 재생되고 있는지도 실시간으로 확인이 가능하다.
+
+허나.. DB에 부담을 주면서 그렇게 해야할까?
+*/

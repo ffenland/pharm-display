@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { IMonitorsInfo } from "../../types/types";
 import { Box, Grid, GridItem, HStack, Text } from "@chakra-ui/react";
 import { useAuthContext } from "../../libs/useAuthContext";
-import { listenMonitorInfo } from "../../firebase/firebase";
+import { listenMonitorsInfo } from "../../firebase/firebase";
 import { Link } from "react-router-dom";
+import type { Unsubscribe } from "firebase/database";
 
 const MonitorGrid = ({ monitors }: { monitors: IMonitorsInfo }) => {
   const monitorKeys = Object.keys(monitors);
@@ -41,13 +42,28 @@ const DisplayMonitors = () => {
 
   const [monitors, setMonitors] = useState<IMonitorsInfo>();
   useEffect(() => {
+    let unsubscribePromise: Promise<Unsubscribe> | undefined;
     if (user) {
       //get monitor info
       const keyCode = user.keyCode;
       const callback = (monitors: IMonitorsInfo) => {
         setMonitors(monitors);
       };
-      listenMonitorInfo({ keyCode, callback });
+
+      unsubscribePromise = listenMonitorsInfo({ keyCode, callback });
+      return () => {
+        if (unsubscribePromise) {
+          unsubscribePromise
+            .then((unsubscribe) => {
+              // Call the unsubscribe function when the Promise resolves
+              unsubscribe();
+            })
+            .catch((error) => {
+              // Handle any errors if unsubscribePromise rejects
+              console.error("Error while unsubscribing:", error);
+            });
+        }
+      };
     }
   }, [user]);
 

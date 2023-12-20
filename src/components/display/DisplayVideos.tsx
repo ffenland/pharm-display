@@ -3,6 +3,7 @@ import { useAuthContext } from "../../libs/useAuthContext";
 import { IVideosInfo } from "../../types/types";
 import { listenVideosInfo } from "../../firebase/firebase";
 import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
+import type { Unsubscribe } from "firebase/database";
 
 const VideoList = ({ videos }: { videos: IVideosInfo }) => {
   const keys = Object.keys(videos);
@@ -42,12 +43,26 @@ const DisplayVideos = () => {
 
   const [videos, setVideos] = useState<IVideosInfo>();
   useEffect(() => {
+    let unsubscribePromise: Promise<Unsubscribe> | undefined;
     if (user) {
       const keyCode = user.keyCode;
       const callback = (videos: IVideosInfo) => {
         setVideos(videos);
       };
-      listenVideosInfo({ keyCode, callback });
+      unsubscribePromise = listenVideosInfo({ keyCode, callback });
+      () => {
+        if (unsubscribePromise) {
+          unsubscribePromise
+            .then((unsubscribe) => {
+              // Call the unsubscribe function when the Promise resolves
+              unsubscribe();
+            })
+            .catch((error) => {
+              // Handle any errors if unsubscribePromise rejects
+              console.error("Error while unsubscribing:", error);
+            });
+        }
+      };
     }
   }, [user]);
   return (

@@ -30,12 +30,13 @@ export interface IUserWithToken extends User {
   idToken: string;
   keyCode: string;
 }
-
+export interface IMonitorOne {
+  files: string[];
+  state: string;
+  currentIndex: number;
+}
 export interface IMonitorsInfo {
-  [keys: string]: {
-    files: string[];
-    state: string;
-  };
+  [keys: string]: IMonitorOne;
 }
 export interface IVideosInfo {
   [key: string]: { path: string; state: string };
