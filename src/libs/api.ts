@@ -4,13 +4,13 @@ import axios from "axios";
 import { auth } from "../firebase/firebase";
 import { QueryFunctionContext } from "@tanstack/react-query";
 
-export const staticPath = "http://127.0.0.1:8000/static/";
+export const staticPath = "http://boripharma.ipdisk.co.kr:9875/static/";
 
 export const instance = axios.create({
   baseURL:
     process.env.NODE_ENV === "development"
-      ? "http://127.0.0.1:8000/api/v1/"
-      : "http://127.0.0.1:8000/api/v1/",
+      ? "http://boripharma.ipdisk.co.kr:9875/api/v1/"
+      : "http://boripharma.ipdisk.co.kr:9875/api/v1/",
 });
 
 export const getMe = async () => {
@@ -47,6 +47,25 @@ export const videoUploadApi = async ({
     })
     .then((response) => response.data);
 };
+
+export const videoDeleteApi = async ({
+  idToken,
+  filePath,
+}: {
+  idToken: string;
+  filePath: string;
+}) =>
+  instance.put(
+    "videos/",
+    { filePath },
+    {
+      headers: {
+        "X-CSRFToken": Cookie.get("csrftoken") || "",
+        Authorization: `Bearer ${idToken}`, // Firebase 토큰을 Bearer 토큰으로 전달
+        // "Content-Type": "application/json", // 필요한 경우 Content-Type 설정
+      },
+    }
+  );
 
 interface IMeResponse {
   ok: boolean;

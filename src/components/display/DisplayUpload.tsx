@@ -29,7 +29,6 @@ const DisplayUpload = () => {
     setIsUploading(true);
     const result = await videoUpload({
       keyCode: user.keyCode,
-      idToken: user.idToken,
       file: data.video[0],
     });
     setIsUploading(false);

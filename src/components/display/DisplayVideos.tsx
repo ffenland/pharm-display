@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useAuthContext } from "../../libs/useAuthContext";
 import { IVideosInfo } from "../../types/types";
-import { listenVideosInfo } from "../../firebase/firebase";
+import { listenVideosInfo, videoDelete } from "../../firebase/firebase";
 import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import type { Unsubscribe } from "firebase/database";
 
-const VideoList = ({ videos }: { videos: IVideosInfo }) => {
+const VideoList = ({
+  videos,
+  onDelete,
+}: {
+  videos: IVideosInfo;
+  onDelete: (key: string) => void;
+}) => {
   const keys = Object.keys(videos);
   return (
     <VStack w="full">
@@ -25,7 +31,13 @@ const VideoList = ({ videos }: { videos: IVideosInfo }) => {
             <HStack>
               <Text>{fileName}</Text>
             </HStack>
-            <Button colorScheme="pink" size="sm">
+            <Button
+              colorScheme="pink"
+              size="sm"
+              onClick={() => {
+                onDelete(key);
+              }}
+            >
               삭제
             </Button>
           </HStack>
@@ -42,6 +54,12 @@ const DisplayVideos = () => {
   } = useAuthContext();
 
   const [videos, setVideos] = useState<IVideosInfo>();
+
+  const onDelete = (key: string) => {
+    if (!videos || !user) return;
+
+    videoDelete({ filePath: videos[key].path });
+  };
   useEffect(() => {
     let unsubscribePromise: Promise<Unsubscribe> | undefined;
     if (user) {
@@ -73,7 +91,7 @@ const DisplayVideos = () => {
         </Text>
       </Box>
       {videos ? (
-        <VideoList videos={videos} />
+        <VideoList videos={videos} onDelete={onDelete} />
       ) : (
         <Text fontSize={"sm"} color={"red.500"}>
           업로드된 동영상이 없습니다.

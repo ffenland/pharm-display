@@ -17,22 +17,18 @@ import {
   onValue,
   update,
 } from "firebase/database";
-import { getMessaging } from "firebase/messaging";
 import {
   getStorage,
   ref as storageRef,
   getDownloadURL,
 } from "firebase/storage";
-import { staticPath, videoUploadApi } from "../libs/api";
+import { videoDeleteApi, videoUploadApi } from "../libs/api";
 import {
   IMonitorOne,
   IMonitorsInfo,
   IUserWithToken,
-  IVideoInfo,
   IVideosInfo,
 } from "../types/types";
-import { QueryFunctionContext } from "@tanstack/react-query";
-import { getFileNameFromPath } from "../libs/utils";
 
 export interface AdminUser extends User {
   isAdmin: boolean;
@@ -65,7 +61,7 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const database = getDatabase(app);
-export const messaging = getMessaging(app);
+
 export const storage = getStorage(app);
 
 const provider = new GoogleAuthProvider();
@@ -170,7 +166,11 @@ export const onUserStateChanged = (
       if (user) {
         const idToken = await user.getIdToken();
         const keyCode = await getKeyCode(user.uid);
-        callback({ ...user, idToken, keyCode: keyCode ? keyCode : null });
+        if (!keyCode) {
+          callback(null);
+        } else {
+          callback({ ...user, idToken, keyCode });
+        }
       } else {
         callback(null);
       }
@@ -178,17 +178,19 @@ export const onUserStateChanged = (
     onError
   );
 
+// video 파일 업로드
 export const videoUpload = async ({
   keyCode,
-  idToken,
   file,
 }: {
   keyCode: string;
-  idToken: string;
   file: File;
 }) => {
+  if (!auth.currentUser) return false;
+
   try {
     // write to django
+    const idToken = await auth.currentUser.getIdToken();
     await videoUploadApi({ idToken, file, keyCode });
     return true;
   } catch (error) {
@@ -196,120 +198,14 @@ export const videoUpload = async ({
   }
 };
 
-export const writeDbVideoUpload = async ({
-  keyCode,
-  filePath,
-}: {
-  keyCode: string;
-  filePath: string;
-}) => {
-  const splitPath = filePath.split("/"); // '/'를 기준으로 문자열을 분할하여 배열 생성
-  const fileName = splitPath[splitPath.length - 1].split(".")[0];
-  const path = `files/${keyCode}/${fileName}`;
-  const dbRef = await getDatabaseReference(path);
-  databaseSet(dbRef, {
-    filePath,
-    state: "pause",
-  });
-};
-
-const getDatabaseReference = async (path: string) => {
-  let tryPath = path;
-  let count = 0;
-  while (
-    await get(databaseRef(database, path)).then((snapshot) => snapshot.exists())
-  ) {
-    count++;
-    tryPath = tryPath + `_${count}`;
-  }
-  return databaseRef(database, tryPath);
-};
-
-export const setVideoPlay = async ({
-  keyCode,
-  key,
-}: {
-  keyCode: string;
-  key: string;
-}) => {
-  const videoRef = databaseRef(database, `files/${keyCode}`);
-  const snapshot = await get(videoRef);
-  if (snapshot.exists()) {
-    snapshot.forEach((childSnapshot) => {
-      const childKey = childSnapshot.key;
-      if (childKey === key) {
-        update(databaseRef(database, `files/${keyCode}/${key}`), {
-          state: "play",
-        });
-      } else {
-        update(databaseRef(database, `files/${keyCode}/${childKey}`), {
-          state: "pause",
-        });
-      }
-    });
-  }
-
-  // const keyVideoRef = databaseRef(database, `files/${userUid}/${key}`);
-  // update(videoRef, { state: "play" });
-};
-
-export const getVideoView = async (fullPath: string) => {
-  return new Promise<string>((resolve, reject) => {
-    const starsRef = storageRef(storage, fullPath);
-    try {
-      const url = getDownloadURL(starsRef);
-      resolve(url);
-    } catch (error) {
-      reject("");
-    }
-  });
-};
-
-/**
- *
- * @param baseUrl 공통된 경로
- * @param fileName 파일이름
- * @returns 중복되지 않은 StorageReference
- */
-
-export const setCurrentVideo = async ({
-  userUid,
-  filePath,
-}: {
-  userUid: string;
-  filePath: string;
-}) => {
-  databaseSet(databaseRef(database, `currentVideo/${userUid}`), {
-    filePath,
-    state: "play",
-  });
-};
-
-export interface ImonitorData {
-  filePath: string;
-  state: string;
-}
-
-export const monitorSignup = async ({
-  keyCode,
-  monitorId,
-  callback,
-}: {
-  keyCode: string;
-  monitorId: string;
-  callback: (data: ImonitorData) => void;
-}) => {
-  const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
-  onValue(monitorRef, async (snapshot) => {
-    const data: ImonitorData | null = snapshot.val();
-    if (data === null) {
-      databaseSet(monitorRef, { filePath: "", state: "pause" });
-    } else {
-      const filePath = data.filePath;
-
-      callback({ filePath: filePath, state: data.state });
-    }
-  });
+// 업로드된 video 파일 삭제
+export const videoDelete = async ({ filePath }: { filePath: string }) => {
+  // ref가 여러개다.
+  //모니터에 연결된 파일들 삭제
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) return false;
+  const result = await videoDeleteApi({ idToken, filePath });
+  return result;
 };
 
 // 업로드된 Videos 목록 DB 리스너 등록
@@ -345,7 +241,7 @@ export const listenMonitorsInfo = async ({
     callback(monitors);
   });
 };
-
+// 새로운 모니터 등록 at Monitor.tsx
 export const addNewMonitor = async ({
   keyCode,
   monitorId,
@@ -400,17 +296,4 @@ export const editMonitorFiles = async ({
     `monitors/${keyCode}/${monitorId}/files`
   );
   databaseSet(monitorsRef, files);
-};
-
-export const setVideoState = async ({
-  keyCode,
-  monitorId,
-  state,
-}: {
-  keyCode: string;
-  monitorId: string;
-  state: string;
-}) => {
-  const monitorRef = databaseRef(database, `monitors/${keyCode}/${monitorId}`);
-  await update(monitorRef, { state });
 };
